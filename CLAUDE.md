@@ -1,0 +1,77 @@
+# CLAUDE.md
+
+Guide pour Claude Code sur ce dépôt.
+
+## Projet
+
+**ProfilBarres** est un addon WoW pour **World of Warcraft: Forever**. Le joueur enregistre plusieurs profils de barres d'action, puis les recharge :
+- un bouton sur la minicarte (aussi accessible par l'Addon Compartment et `/profil`) ouvre une fenêtre ;
+- cette fenêtre permet de créer, lister, charger, écraser et supprimer des profils nommés ;
+- un profil contient, pour **chaque emplacement d'action** (1 à 180), le sort, la macro, l'objet, la monture ou l'ensemble d'équipement qui s'y trouve, ainsi que les **raccourcis clavier** liés à chaque emplacement.
+
+Le README.md décrit les fonctionnalités et les limitations côté utilisateur. Il doit être tenu à jour quand le comportement change.
+
+## Méthode de travail
+
+- **Avancer par étapes validées** : ne pas commencer à coder une fonctionnalité sans l'accord explicite de l'utilisateur. Proposer d'abord, puis implémenter.
+- L'utilisateur s'exprime en **français**. Les réponses, les textes visibles en jeu et les commentaires de code sont en français. Les identifiants de code sont en anglais.
+- Pas de commit ni de push sans demande explicite.
+
+## Plateforme : WoW: Forever
+
+Ce qui suit vient de sources communautaires de la bêta (novembre 2026). En cas de doute, revérifier sur [warcraft.wiki.gg](https://warcraft.wiki.gg).
+
+- **Le client est Mainline (Midnight), pas Classic.** L'API correspond à la 12.1.x : `C_Spell`, `C_Item`, `C_MountJournal`, `C_EquipmentSet`, `C_ChatInfo`, etc. Il ne faut pas reprendre de code ou de documentation propre à Classic Era.
+- **TOC** :
+  - `## Interface: 16001` ;
+  - le type de jeu interne est `camelot` ;
+  - le client accepte les suffixes `_Forever.toc` et `_Camelot.toc`, mais le packager BigWigs ne reconnaît que `_Camelot`. Utiliser un **TOC unique sans suffixe**.
+- **Détection de la version** : `WOW_PROJECT_ID == WOW_PROJECT_CAMELOT` (18) sur les builds récents, mais il valait `1` sur d'anciens builds. Ne jamais brancher uniquement sur cette valeur. Préférer tester l'existence de la fonction (`if C_Spell and C_Spell.PickupSpell then ...`).
+- **Fonctions globales dépréciées** : `GetSpellInfo`, `GetItemInfo`, `PickupSpell` et `PickupItem` peuvent être absentes. Utiliser `C_Spell.GetSpellName`, `C_Spell.PickupSpell`, `C_Item.GetItemNameByID` et `C_Item.PickupItem`, avec repli si besoin.
+- **Restrictions Midnight** :
+  - **valeurs secrètes** en combat : on ne peut ni les comparer ni calculer avec. Les tester avec `issecretvalue(v)` avant tout usage ;
+  - `COMBAT_LOG_EVENT_UNFILTERED` n'est pas accessible ;
+  - les messages entre addons sont bloqués en instance (`C_ChatInfo.InChatMessagingLockdown()`) ;
+  - les GUID sont brouillés.
+- **Pas de royaumes** : les noms de personnage sont uniques par région, avec des noms de famille. Ne pas identifier un personnage par `Nom-Royaume`.
+- **Dossier des addons** : `_classic_beta_\Interface\AddOns` en bêta. Le nom du dossier au lancement n'est pas confirmé (probablement `_forever_`).
+
+## Contraintes Lua et WoW
+
+- **Lua 5.1** : pas de `goto`, pas d'opérateur `//`, pas d'opérateurs binaires natifs (utiliser `bit.band`, etc.), pas de `_ENV`, `require`, `io` ni `os`. L'ordre de chargement des fichiers est défini dans le TOC.
+- **Espace de noms** : chaque fichier commence par `local ADDON, ns = ...`. Tout passe par `ns`. Les seuls globaux autorisés sont la variable sauvegardée `ProfilBarresDB`, les noms des frames, `SLASH_PROFILBARRES1` / `SlashCmdList.PROFILBARRES` et `ProfilBarres_OnAddonCompartmentClick`.
+- **Initialisation** : lire et initialiser `ProfilBarresDB` dans `ADDON_LOADED` (filtrer sur `name == ADDON`), jamais au chargement du fichier.
+- **Combat (taint et protection)** : `PlaceAction`, `PickupAction`, `CreateMacro`, `SetBinding` et `SaveBindings` doivent être refusés si `InCombatLockdown()` est vrai. Afficher alors un message à l'utilisateur au lieu d'échouer.
+- **UI** : frames Blizzard standard (`BasicFrameTemplateWithInset`, `UIPanelButtonTemplate`, `InputBoxTemplate`, `UICheckButtonTemplate`, `UIPanelScrollFrameTemplate`) et `StaticPopupDialogs` pour les confirmations. Fermeture par Échap via `UISpecialFrames`. Aucune bibliothèque externe tant qu'elle n'est pas nécessaire : le bouton de minicarte est codé à la main, sans LibDBIcon.
+- Préfixe des messages dans le chat : `|cff33ff99Profil|r :`.
+
+## Notes techniques sur le domaine
+
+- **Lecture d'un emplacement** : `HasAction(slot)`, puis `GetActionInfo(slot)`, qui renvoie `actionType, id, subType`. Types à gérer : `spell`, `macro`, `item`, `summonmount`, `equipmentset`. Les autres types (`flyout`, etc.) sont marqués comme non pris en charge et l'emplacement n'est pas modifié lors de la restauration.
+- **Macros** : identifier la macro par son nom avec `GetActionText(slot)`, puis `GetMacroIndexByName`. Ne pas se fier à l'`id` renvoyé par `GetActionInfo`, qui peut valoir un spellID selon la version. Sauvegarder le nom, l'icône, le texte et s'il s'agit d'une macro de personnage (index > `MAX_ACCOUNT_MACROS`) pour pouvoir la recréer.
+- **Poser une action** : `ClearCursor()`, puis prendre l'élément (`C_Spell.PickupSpell`, `PickupMacro`, `C_Item.PickupItem`, ...), vérifier `GetCursorInfo()`, puis `PlaceAction(slot)` et `ClearCursor()`. Pour vider un emplacement : `PickupAction(slot)` puis `ClearCursor()`. Ne pas toucher aux emplacements déjà identiques au profil.
+- **Raccourcis** : liste de commandes `ACTIONBUTTON1-12`, `MULTIACTIONBAR1..7BUTTON1-12`, `SHAPESHIFTBUTTON1-10`, `BONUSACTIONBUTTON1-10`. Capture avec `GetBindingKey(cmd)` (plusieurs touches possibles). Restauration en trois temps : délier les touches actuelles de ces commandes (`SetBinding(key)`), lier celles du profil (`SetBinding(key, cmd)`), puis `SaveBindings(GetCurrentBindingSet())`.
+- **Correspondance emplacements et barres** (Mainline) : 1-12 barre principale, 13-24 page 2, 25-36 barre droite (MULTIACTIONBAR3), 37-48 barre gauche (MULTIACTIONBAR4), 49-60 barre en bas à droite (MULTIACTIONBAR2), 61-72 barre en bas à gauche (MULTIACTIONBAR1), 73-120 barres de posture et de forme, 121-144 barres spéciales, 145-180 barres 5 à 7 (MULTIACTIONBAR5-7).
+
+## Format des données (prévu)
+
+```lua
+ProfilBarresDB = {
+  minimap  = { angle = 225, hide = false },
+  options  = { actions = true, bindings = true },
+  profiles = {
+    ["Nom"] = {
+      name = "Nom", created = <time()>, updated = <time()>,
+      char = "Perso", class = "MAGE", spec = "Givre",
+      actions  = { [slot] = { type = "spell", id = 116, name = "Éclair de givre" }, ... },
+      bindings = { ["ACTIONBUTTON1"] = { "1" }, ... },
+    },
+  },
+}
+```
+
+## Vérification
+
+- Les tests automatisés ne sont pas possibles hors du jeu. Au minimum, vérifier la syntaxe avec `luac5.1 -p *.lua` ou `luacheck`, si ces outils sont installés (ils ne le sont pas pour l'instant dans l'environnement WSL).
+- Test en jeu : `/reload`, BugSack ou `/console scriptErrors 1`, puis vérifier le fichier `WTF\...\SavedVariables\ProfilBarres.lua`.
+- Toujours tester : enregistrement, chargement, chargement avec un sort non appris, macro supprimée puis recréée, tentative de chargement en combat (doit être refusée).
