@@ -1,0 +1,20 @@
+services:
+  # Conteneur d'outils : vérification de la syntaxe, lint et packaging.
+  tools:
+    build:
+      context: ./docker
+    image: profilbarres-tools:latest
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    working_dir: /work
+    volumes:
+      - .:/work
+
+  # Copie l'addon dans le dossier AddOns du jeu (défini par WOW_ADDONS_DIR dans .env).
+  deploy:
+    image: profilbarres-tools:latest
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    working_dir: /work
+    volumes:
+      - .:/work:ro
+      - "${WOW_ADDONS_DIR:-./.no-wow-dir}:/wow-addons"
+    command: ["sh", "scripts/deploy.sh"]

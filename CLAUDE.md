@@ -70,8 +70,20 @@ ProfilBarresDB = {
 }
 ```
 
+## Outillage : tout passe par Docker
+
+- **Ne rien installer sur la machine hôte** (ni apt, ni luarocks, ni npm). Tout outil nécessaire s'ajoute dans `docker/Dockerfile`, puis on lance `./dev.sh build`.
+- Tout l'outillage fonctionne dans Docker. Si `docker` est indisponible, demander à l'utilisateur de le démarrer.
+- Commandes :
+  - `./dev.sh check` : `luac5.1 -p` puis `luacheck`. **À lancer après chaque modification de Lua.**
+  - `./dev.sh package` : archive zip.
+  - `./dev.sh deploy` : copie l'addon vers `WOW_ADDONS_DIR` défini dans `.env`.
+  - `./dev.sh shell` : shell dans le conteneur.
+- Les conteneurs tournent avec l'UID et le GID de l'hôte, pour que les fichiers créés n'appartiennent pas à root.
+- Quand l'addon utilise une nouvelle fonction de l'API WoW, l'ajouter dans `read_globals` de `.luacheckrc`. Un nouveau global écrit par l'addon va dans `globals`.
+
 ## Vérification
 
-- Les tests automatisés ne sont pas possibles hors du jeu. Au minimum, vérifier la syntaxe avec `luac5.1 -p *.lua` ou `luacheck`, si ces outils sont installés (ils ne le sont pas pour l'instant dans l'environnement WSL).
+- Les tests automatisés ne sont pas possibles hors du jeu. Avant de rendre la main, `./dev.sh check` doit passer sans erreur ni avertissement.
 - Test en jeu : `/reload`, BugSack ou `/console scriptErrors 1`, puis vérifier le fichier `WTF\...\SavedVariables\ProfilBarres.lua`.
 - Toujours tester : enregistrement, chargement, chargement avec un sort non appris, macro supprimée puis recréée, tentative de chargement en combat (doit être refusée).

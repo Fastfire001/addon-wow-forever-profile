@@ -64,12 +64,46 @@ Deux cases à cocher permettent de choisir ce qui est restauré : **les actions*
 
 ### Prérequis
 
-- Le client WoW: Forever installé.
-- Un éditeur avec la prise en charge de Lua 5.1. Recommandé : l'extension VS Code *WoW API* (Ketho) ou EmmyLua pour JetBrains.
-- Addons utiles pour le test : **BugSack** et **BugGrabber** (capture des erreurs Lua).
-- Optionnel : `luac5.1` ou `luacheck` pour vérifier la syntaxe hors du jeu.
+Tous les outils tournent dans **Docker** : rien d'autre n'est à installer sur la machine.
 
-### Structure prévue
+- **Docker Desktop**, avec l'intégration WSL activée pour ta distribution (*Settings > Resources > WSL integration*).
+- Le client WoW: Forever.
+- Addons utiles pour le test en jeu : **BugSack** et **BugGrabber** (capture des erreurs Lua).
+- Optionnel : un éditeur qui prend en charge Lua 5.1 (extension VS Code *WoW API* de Ketho, ou EmmyLua pour JetBrains).
+
+### Environnement Docker
+
+L'image `profilbarres-tools` (Debian, voir `docker/Dockerfile`) contient Lua 5.1, luacheck, zip et rsync. Toutes les commandes passent par `./dev.sh` :
+
+| Commande | Effet |
+|---|---|
+| `./dev.sh build` | Construit l'image (à refaire seulement si `docker/Dockerfile` change) |
+| `./dev.sh check` | Vérifie la syntaxe Lua 5.1 (`luac5.1 -p`), puis lance `luacheck` (configuré par `.luacheckrc`) |
+| `./dev.sh package` | Crée `.release/ProfilBarres-<version>.zip`, avec la version lue dans le TOC |
+| `./dev.sh deploy` | Copie `ProfilBarres/` dans le dossier AddOns du jeu |
+| `./dev.sh shell` | Ouvre un shell dans le conteneur |
+
+Configuration du déploiement : copier `.env.example` en `.env` (fichier ignoré par git), puis renseigner `WOW_ADDONS_DIR` avec le chemin du dossier AddOns vu depuis WSL, par exemple :
+
+```
+WOW_ADDONS_DIR=/mnt/c/Program Files (x86)/World of Warcraft/_forever_/Interface/AddOns
+```
+
+`.luacheckrc` contient la liste des globaux WoW autorisés. Si luacheck signale une fonction WoW légitime comme inconnue (`W113`), il faut l'ajouter dans `read_globals`.
+
+### Structure
+
+```
+compose.yaml           # services Docker : tools (vérification, packaging) et deploy
+dev.sh                 # point d'entrée des commandes de développement
+docker/Dockerfile      # image des outils
+scripts/               # check.sh, package.sh, deploy.sh (exécutés dans le conteneur)
+.luacheckrc            # configuration de luacheck (globaux WoW)
+.env.example           # modèle de configuration locale (WOW_ADDONS_DIR)
+ProfilBarres/          # l'addon (à venir)
+```
+
+Fichiers prévus pour l'addon :
 
 ```
 ProfilBarres/
@@ -81,18 +115,15 @@ ProfilBarres/
 
 ### Tester une modification
 
-1. Créer un lien entre le dossier de l'addon dans le dépôt et le dossier AddOns du jeu, pour éviter de copier à chaque fois. Depuis Windows, dans un terminal administrateur :
-   ```bat
-   mklink /J "C:\...\World of Warcraft\_forever_\Interface\AddOns\ProfilBarres" "\\wsl$\<distro>\home\<user>\src\addon-wow-forever-profile\ProfilBarres"
-   ```
-   Si la jonction vers WSL ne fonctionne pas, copier le dossier à la main.
-2. En jeu : `/reload` après chaque modification.
-3. Les erreurs apparaissent dans BugSack. `/console scriptErrors 1` les affiche aussi directement.
-4. Les données sauvegardées se trouvent dans `WTF\Account\<COMPTE>\SavedVariables\ProfilBarres.lua`.
+1. `./dev.sh check` : il doit se terminer sans erreur ni avertissement.
+2. `./dev.sh deploy` : copie l'addon dans le jeu.
+3. En jeu : `/reload`.
+4. Les erreurs apparaissent dans BugSack. `/console scriptErrors 1` les affiche aussi directement.
+5. Les données sauvegardées se trouvent dans `WTF\Account\<COMPTE>\SavedVariables\ProfilBarres.lua`.
 
 ### Publication
 
-- Archive zip contenant le dossier `ProfilBarres/` à sa racine.
+- `./dev.sh package` produit l'archive zip, avec le dossier `ProfilBarres/` à sa racine.
 - CurseForge propose une catégorie WoW Forever. Le packager BigWigs (v2.6.0 et plus) détecte automatiquement les interfaces `16xxx`.
 
 ## Ressources

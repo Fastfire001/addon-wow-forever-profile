@@ -11,3 +11,7 @@ desktop.ini
 # Archives de release générées
 *.zip
 .release/
+
+# Configuration locale
+.env
+.no-wow-dir/
