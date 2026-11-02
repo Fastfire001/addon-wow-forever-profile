@@ -39,8 +39,8 @@ Ce qui suit vient de sources communautaires de la bêta (novembre 2026). En cas 
 ## Contraintes Lua et WoW
 
 - **Lua 5.1** : pas de `goto`, pas d'opérateur `//`, pas d'opérateurs binaires natifs (utiliser `bit.band`, etc.), pas de `_ENV`, `require`, `io` ni `os`. L'ordre de chargement des fichiers est défini dans le TOC.
-- **Espace de noms** : chaque fichier commence par `local ADDON, ns = ...`. Tout passe par `ns`. Les seuls globaux autorisés sont la variable sauvegardée `ProfilBarresDB`, les noms des frames, `SLASH_PROFILBARRES1` / `SlashCmdList.PROFILBARRES` et `ProfilBarres_OnAddonCompartmentClick`.
-- **Initialisation** : lire et initialiser `ProfilBarresDB` dans `ADDON_LOADED` (filtrer sur `name == ADDON`), jamais au chargement du fichier.
+- **Espace de noms** : chaque fichier commence par `local ADDON, ns = ...`. Tout passe par `ns`. Les seuls globaux autorisés sont les variables sauvegardées `ProfilBarresDB` (compte) et `ProfilBarresCharDB` (personnage), les noms des frames, `SLASH_PROFILBARRES1` / `SlashCmdList.PROFILBARRES` et `ProfilBarres_OnAddonCompartmentClick`.
+- **Initialisation** : lire et initialiser `ProfilBarresDB` et `ProfilBarresCharDB` dans `ADDON_LOADED` (filtrer sur `name == ADDON`), jamais au chargement du fichier.
 - **Combat (taint et protection)** : `PlaceAction`, `PickupAction`, `CreateMacro`, `SetBinding` et `SaveBindings` doivent être refusés si `InCombatLockdown()` est vrai. Afficher alors un message à l'utilisateur au lieu d'échouer.
 - **UI** : frames Blizzard standard (`BasicFrameTemplateWithInset`, `UIPanelButtonTemplate`, `InputBoxTemplate`, `UICheckButtonTemplate`, `UIPanelScrollFrameTemplate`) et `StaticPopupDialogs` pour les confirmations. Fermeture par Échap via `UISpecialFrames`. Aucune bibliothèque externe tant qu'elle n'est pas nécessaire : le bouton de minicarte est codé à la main, sans LibDBIcon.
 - Préfixe des messages dans le chat : `|cff33ff99Profil|r :`.
@@ -55,14 +55,23 @@ Ce qui suit vient de sources communautaires de la bêta (novembre 2026). En cas 
 
 ## Format des données (prévu)
 
+Les **profils sont propres à chaque personnage**, ils ne sont jamais partagés. Ils sont stockés dans une variable `SavedVariablesPerCharacter`. Seuls les réglages d'interface sont communs au compte.
+
 ```lua
+-- ## SavedVariables : réglages communs au compte
 ProfilBarresDB = {
-  minimap  = { angle = 225, hide = false },
-  options  = { actions = true, bindings = true },
+  version = 1,
+  minimap = { angle = 225, hide = false },
+  options = { actions = true, bindings = true },
+}
+
+-- ## SavedVariablesPerCharacter : profils de ce personnage
+ProfilBarresCharDB = {
+  version  = 1,
   profiles = {
     ["Nom"] = {
       name = "Nom", created = <time()>, updated = <time()>,
-      char = "Perso", class = "MAGE", spec = "Givre",
+      spec = "Givre",
       actions  = { [slot] = { type = "spell", id = 116, name = "Éclair de givre" }, ... },
       bindings = { ["ACTIONBUTTON1"] = { "1" }, ... },
     },
@@ -85,5 +94,5 @@ ProfilBarresDB = {
 ## Vérification
 
 - Les tests automatisés ne sont pas possibles hors du jeu. Avant de rendre la main, `./dev.sh check` doit passer sans erreur ni avertissement.
-- Test en jeu : `/reload`, BugSack ou `/console scriptErrors 1`, puis vérifier le fichier `WTF\...\SavedVariables\ProfilBarres.lua`.
+- Test en jeu : `/reload`, BugSack ou `/console scriptErrors 1`, puis vérifier les fichiers `WTF\Account\<COMPTE>\SavedVariables\ProfilBarres.lua` (réglages) et `WTF\Account\<COMPTE>\<royaume>\<perso>\SavedVariables\ProfilBarres.lua` (profils).
 - Toujours tester : enregistrement, chargement, chargement avec un sort non appris, macro supprimée puis recréée, tentative de chargement en combat (doit être refusée).

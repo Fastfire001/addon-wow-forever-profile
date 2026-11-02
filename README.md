@@ -9,7 +9,7 @@ Addon pour **World of Warcraft: Forever** qui permet d'enregistrer plusieurs **p
 - **Bouton sur la minicarte** « Profil » qui ouvre et ferme la fenêtre de l'addon. Il est déplaçable autour de la minicarte et sa position est mémorisée. L'addon est aussi accessible depuis le menu des addons (Addon Compartment) et par la commande `/profil`.
 - **Fenêtre de gestion des profils** :
   - créer un profil à partir de l'état actuel des barres, en lui donnant un nom ;
-  - lister les profils enregistrés, avec le personnage, la classe, le nombre d'actions et de raccourcis et la date de mise à jour ;
+  - lister les profils enregistrés, avec la spécialisation, le nombre d'actions et de raccourcis et la date de mise à jour ;
   - **charger**, **écraser** ou **supprimer** un profil, avec une confirmation.
 - **Contenu d'un profil** :
   - pour **chaque emplacement de barre d'action** : le sort, la macro, l'objet, la monture ou l'ensemble d'équipement qui s'y trouve ;
@@ -55,7 +55,7 @@ Deux cases à cocher permettent de choisir ce qui est restauré : **les actions*
 
 - **Pas de chargement en combat** : poser des actions, créer des macros et modifier des raccourcis sont des opérations protégées par le jeu.
 - **Les barres dépendent de la spécialisation** : un profil capture les barres de la spécialisation active au moment de l'enregistrement.
-- **Profils partagés entre personnages** : un profil créé avec une autre classe peut être chargé, mais les sorts inconnus seront retirés des barres. Une alerte s'affiche avant le chargement.
+- **Profils propres à chaque personnage** : chaque personnage a sa propre liste de profils. Seuls les réglages (position du bouton de minicarte, options de restauration) sont communs au compte.
 - **Macros** : elles sont retrouvées par leur nom. Si une macro n'existe plus, l'addon tente de la recréer à partir du texte sauvegardé, à condition qu'il reste de la place.
 - **Non pris en charge** : les menus déroulants de sorts (flyouts, comme les portails du mage) et les actions de familier ne sont pas restaurés.
 - Les profils sont écrits sur le disque par le jeu à la **déconnexion** ou au `/reload`. En cas de crash du client, les modifications de la session sont perdues.
@@ -119,7 +119,7 @@ ProfilBarres/
 2. `./dev.sh deploy` : copie l'addon dans le jeu.
 3. En jeu : `/reload`.
 4. Les erreurs apparaissent dans BugSack. `/console scriptErrors 1` les affiche aussi directement.
-5. Les données sauvegardées se trouvent dans `WTF\Account\<COMPTE>\SavedVariables\ProfilBarres.lua`.
+5. Les données sauvegardées se trouvent dans `WTF\Account\<COMPTE>\SavedVariables\ProfilBarres.lua` (réglages communs) et `WTF\Account\<COMPTE>\<royaume>\<perso>\SavedVariables\ProfilBarres.lua` (profils du personnage).
 
 ### Publication
 
