@@ -2,7 +2,7 @@
 local _, ns = ...
 local PB = ns.PB
 
-local FRAME_WIDTH, FRAME_HEIGHT = 480, 460
+local FRAME_WIDTH, FRAME_HEIGHT = 540, 460
 local ROW_HEIGHT = 40
 local LIST_LEFT, LIST_RIGHT, LIST_TOP, LIST_BOTTOM = 14, 34, 86, 44
 
@@ -56,6 +56,45 @@ StaticPopupDialogs.PROFILBARRES_DELETE = {
   preferredIndex = 3,
 }
 
+-- Le champ de saisie d'un StaticPopup a changé d'accès selon les versions du client.
+local function GetPopupEditBox(popup)
+  if not popup then return nil end
+  if popup.GetEditBox then return popup:GetEditBox() end
+  return popup.editBox or popup.EditBox
+end
+
+local function RenameFromPopup(popup, oldName)
+  local editBox = GetPopupEditBox(popup)
+  if editBox then PB:RenameProfile(oldName, editBox:GetText()) end
+end
+
+StaticPopupDialogs.PROFILBARRES_RENAME = {
+  text = "Nouveau nom pour le profil « %s » :",
+  button1 = "Renommer",
+  button2 = CANCEL or "Annuler",
+  hasEditBox = true,
+  maxLetters = PB.MAX_NAME_LENGTH,
+  OnShow = function(self, data)
+    local editBox = GetPopupEditBox(self)
+    if editBox then
+      editBox:SetText(data or "")
+      editBox:HighlightText()
+      editBox:SetFocus()
+    end
+  end,
+  OnAccept = function(self, data) RenameFromPopup(self, data) end,
+  EditBoxOnEnterPressed = function(editBox)
+    local popup = editBox:GetParent()
+    RenameFromPopup(popup, popup.data)
+    popup:Hide()
+  end,
+  EditBoxOnEscapePressed = function(editBox) editBox:GetParent():Hide() end,
+  timeout = 0,
+  whileDead = true,
+  hideOnEscape = true,
+  preferredIndex = 3,
+}
+
 local function LoadWarning()
   local opts = PB.db.options
   local what
@@ -81,6 +120,10 @@ end
 
 local function AskDelete(name)
   StaticPopup_Show("PROFILBARRES_DELETE", name, nil, name)
+end
+
+local function AskRename(name)
+  StaticPopup_Show("PROFILBARRES_RENAME", name, nil, name)
 end
 
 local function SaveFromNameBox()
@@ -156,7 +199,7 @@ local function CreateRow(index)
 
   row.info = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   row.info:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -3)
-  row.info:SetWidth(260)
+  row.info:SetWidth(240)
   row.info:SetJustifyH("LEFT")
   row.info:SetWordWrap(false)
 
@@ -170,8 +213,13 @@ local function CreateRow(index)
   row.overwrite:SetScript("OnClick", function(self) AskOverwrite(self:GetParent().profileName) end)
   AddTooltip(row.overwrite, "Écraser", "Remplace le contenu du profil par tes barres et raccourcis actuels.")
 
+  row.rename = CreateButton(row, "Renommer", 76)
+  row.rename:SetPoint("RIGHT", row.overwrite, "LEFT", -2, 0)
+  row.rename:SetScript("OnClick", function(self) AskRename(self:GetParent().profileName) end)
+  AddTooltip(row.rename, "Renommer", "Change le nom du profil sans modifier son contenu.")
+
   row.load = CreateButton(row, "Charger", 66)
-  row.load:SetPoint("RIGHT", row.overwrite, "LEFT", -2, 0)
+  row.load:SetPoint("RIGHT", row.rename, "LEFT", -2, 0)
   row.load:SetScript("OnClick", function(self) AskLoad(self:GetParent().profileName) end)
   AddTooltip(row.load, "Charger", "Remet tes barres et/ou raccourcis comme dans ce profil.")
 

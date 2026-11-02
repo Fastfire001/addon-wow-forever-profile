@@ -316,6 +316,82 @@ test("profils propres au personnage (variable par personnage)", function()
   eq(ProfilBarresDB.profiles, nil, "rien dans la base du compte")
 end)
 
+test("renommage : contenu et dates conservés", function()
+  local PB = setup()
+  givePlayerStuff(); placeDefaultBars()
+  PB:SaveProfile("Raid")
+  PB.charDB.profiles.Raid.created, PB.charDB.profiles.Raid.updated = 1000, 2000
+  ok(PB:RenameProfile("Raid", "  Raid HM  "), "renommé")
+  eq(PB:GetProfile("Raid"), nil, "ancien nom libéré")
+  local p = PB:GetProfile("Raid HM")
+  ok(p, "nouveau nom")
+  eq(p.name, "Raid HM", "champ name mis à jour")
+  eq(p.created, 1000, "created"); eq(p.updated, 2000, "updated")
+  eq(PB:CountActions(p), 10, "contenu conservé")
+end)
+
+test("renommage : refus (inconnu, pris, vide, trop long, « > »)", function()
+  local PB = setup()
+  PB:SaveProfile("A"); PB:SaveProfile("B")
+  eq(PB:RenameProfile("Nope", "C"), false, "inconnu")
+  eq(PB:RenameProfile("A", "B"), false, "nom déjà pris")
+  ok(hasMessage("existe déjà"), "message nom pris")
+  eq(PB:RenameProfile("A", "  "), false, "vide")
+  eq(PB:RenameProfile("A", string.rep("x", 33)), false, "trop long")
+  eq(PB:RenameProfile("A", "a > b"), false, "caractère >")
+  ok(PB:GetProfile("A") and PB:GetProfile("B"), "rien n'a bougé")
+  ok(PB:RenameProfile("A", "A"), "même nom : sans effet")
+  ok(PB:GetProfile("A"), "toujours là")
+  ok(PB:RenameProfile("A", "a"), "changement de casse autorisé")
+  ok(PB:GetProfile("a") and not PB:GetProfile("A"), "casse appliquée")
+end)
+
+test("enregistrement : « > » interdit dans le nom", function()
+  local PB = setup()
+  eq(PB:SaveProfile("x > y"), false)
+end)
+
+test("renommage : commande /profil renommer", function()
+  local PB = setup()
+  PB:SaveProfile("Mon raid")
+  SlashCmdList.PROFILBARRES("renommer Mon raid > Raid mythique")
+  ok(PB:GetProfile("Raid mythique") and not PB:GetProfile("Mon raid"), "renommé par commande")
+  SlashCmdList.PROFILBARRES("renommer sans separateur")
+  ok(hasMessage("usage : /profil renommer"), "aide si séparateur absent")
+end)
+
+test("renommage : depuis l'interface (bouton, saisie, Entrée)", function()
+  local PB, ns = setup()
+  PB:SaveProfile("Donjon")
+  ns.ToggleWindow()
+  local function findRow(name)
+    for _, f in ipairs(mock.frames) do
+      if f.profileName == name and f.shown then return f end
+    end
+  end
+  local row = findRow("Donjon")
+  ok(row and row.rename, "bouton Renommer présent")
+
+  -- validation par le bouton du popup
+  row.rename:Click()
+  local popup = mock.popups[#mock.popups]
+  eq(popup.which, "PROFILBARRES_RENAME")
+  eq(popup.frame.editBox:GetText(), "Donjon", "champ pré-rempli")
+  popup.frame.editBox:SetText("Donjon HC")
+  mock.acceptPopup()
+  ok(PB:GetProfile("Donjon HC"), "renommé")
+  ok(findRow("Donjon HC"), "liste rafraîchie")
+  eq(findRow("Donjon"), nil, "ancienne ligne disparue")
+
+  -- validation par Entrée dans le champ
+  findRow("Donjon HC").rename:Click()
+  popup = mock.popups[#mock.popups]
+  popup.frame.editBox:SetText("Donjon M+")
+  StaticPopupDialogs.PROFILBARRES_RENAME.EditBoxOnEnterPressed(popup.frame.editBox)
+  ok(PB:GetProfile("Donjon M+"), "renommé avec Entrée")
+  eq(popup.frame:IsShown(), false, "popup fermé")
+end)
+
 test("tri des noms insensible à la casse", function()
   local PB = setup()
   PB:SaveProfile("beta"); PB:SaveProfile("Alpha"); PB:SaveProfile("gamma")

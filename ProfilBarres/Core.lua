@@ -345,6 +345,11 @@ local function NormalizeName(name)
     Print(format("Le nom du profil est trop long (%d caractères max).", PB.MAX_NAME_LENGTH))
     return nil
   end
+  if name:find(">", 1, true) then
+    -- réservé comme séparateur de /profil renommer <ancien> > <nouveau>
+    Print("Le caractère « > » n'est pas autorisé dans un nom de profil.")
+    return nil
+  end
   return name
 end
 PB.NormalizeName = NormalizeName
@@ -384,6 +389,30 @@ function PB:DeleteProfile(name)
   end
   self.charDB.profiles[name] = nil
   Print(format("Profil « %s » supprimé.", name))
+  self:NotifyChanged()
+  return true
+end
+
+-- Renomme un profil sans toucher à son contenu ni à ses dates.
+function PB:RenameProfile(oldName, newName)
+  oldName = strtrim(oldName or "")
+  local profile = self.charDB.profiles[oldName]
+  if not profile then
+    Print(format("Profil « %s » introuvable.", oldName))
+    return false
+  end
+  newName = NormalizeName(newName)
+  if not newName then return false end
+  if newName == oldName then return true end
+  if self.charDB.profiles[newName] then
+    Print(format("Un profil « %s » existe déjà.", newName))
+    return false
+  end
+
+  self.charDB.profiles[oldName] = nil
+  profile.name = newName
+  self.charDB.profiles[newName] = profile
+  Print(format("Profil « %s » renommé en « %s ».", oldName, newName))
   self:NotifyChanged()
   return true
 end
@@ -480,6 +509,7 @@ local function PrintHelp()
   print("  /profil — ouvrir / fermer la fenêtre")
   print("  /profil sauver <nom> — enregistrer les barres actuelles")
   print("  /profil charger <nom> — charger un profil")
+  print("  /profil renommer <ancien> > <nouveau> — renommer un profil")
   print("  /profil liste — lister les profils")
   print("  /profil minimap — afficher / masquer le bouton de la minicarte")
 end
@@ -508,6 +538,13 @@ SlashCmdList.PROFILBARRES = function(msg)
     PB:SaveProfile(rest)
   elseif command == "charger" or command == "load" then
     PB:LoadProfile(rest)
+  elseif command == "renommer" or command == "rename" then
+    local oldName, newName = rest:match("^(.-)%s*>%s*(.-)$")
+    if oldName then
+      PB:RenameProfile(oldName, newName)
+    else
+      Print("usage : /profil renommer <ancien> > <nouveau>")
+    end
   elseif command == "liste" or command == "list" then
     PrintList()
   elseif command == "minimap" then

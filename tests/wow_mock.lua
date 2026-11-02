@@ -134,7 +134,16 @@ function M.install()
   G.CANCEL = "Annuler"
   G.StaticPopupDialogs = {}
   G.StaticPopup_Show = function(which, a1, a2, data)
-    M.popups[#M.popups + 1] = { which = which, a1 = a1, a2 = a2, data = data }
+    local dialog = assert(G.StaticPopupDialogs[which], "popup inconnu " .. which)
+    local popup = NewObject("Frame", "StaticPopup1")
+    popup.which, popup.data = which, data
+    if dialog.hasEditBox then
+      popup.editBox = NewObject("EditBox", nil, popup)
+      popup.GetEditBox = function(self) return self.editBox end
+    end
+    if dialog.OnShow then dialog.OnShow(popup, data) end
+    M.popups[#M.popups + 1] = { which = which, a1 = a1, a2 = a2, data = data, frame = popup }
+    return popup
   end
   G.SlashCmdList = {}
 
@@ -294,7 +303,7 @@ function M.acceptPopup()
   local p = table.remove(M.popups)
   assert(p, "aucun popup affiché")
   local dialog = assert(_G.StaticPopupDialogs[p.which], "popup inconnu " .. p.which)
-  dialog.OnAccept(nil, p.data)
+  dialog.OnAccept(p.frame, p.data)
   return p
 end
 

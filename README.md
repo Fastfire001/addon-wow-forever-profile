@@ -10,7 +10,7 @@ Addon pour **World of Warcraft: Forever** qui permet d'enregistrer plusieurs **p
 - **Fenêtre de gestion des profils** :
   - créer un profil à partir de l'état actuel des barres, en lui donnant un nom ;
   - lister les profils enregistrés, avec la spécialisation, le nombre d'actions et de raccourcis et la date de mise à jour ;
-  - **charger**, **écraser** ou **supprimer** un profil, avec une confirmation.
+  - **charger**, **renommer**, **écraser** ou **supprimer** un profil, avec une confirmation.
 - **Contenu d'un profil** :
   - pour **chaque emplacement de barre d'action** : le sort, la macro, l'objet, la monture ou l'ensemble d'équipement qui s'y trouve ;
   - les **raccourcis clavier** associés à chaque emplacement (barre principale, barres multiples, barre de posture et barre de familier).
@@ -46,6 +46,7 @@ Les clients Classic Era, Cataclysm Classic et TBC Anniversary ne sont **pas** vi
 | Enregistrer un profil | Saisir un nom, puis *Enregistrer* (ou Entrée) |
 | Charger un profil | *Charger*, puis confirmer |
 | Mettre à jour un profil | *Écraser* : remplace le contenu par l'état actuel |
+| Renommer un profil | *Renommer*, saisir le nouveau nom, puis valider (ou Entrée) |
 | Supprimer un profil | *X*, puis confirmer |
 | Masquer ou afficher le bouton | `/profil minimap` |
 
@@ -58,6 +59,7 @@ Commandes de chat :
 | `/profil` | Ouvre ou ferme la fenêtre |
 | `/profil sauver <nom>` | Enregistre les barres actuelles sous ce nom (écrase s'il existe déjà) |
 | `/profil charger <nom>` | Charge le profil, selon les options cochées |
+| `/profil renommer <ancien> > <nouveau>` | Renomme un profil (le caractère `>` est donc interdit dans les noms) |
 | `/profil liste` | Liste les profils du personnage |
 | `/profil minimap` | Affiche ou masque le bouton de la minicarte |
 
@@ -116,6 +118,7 @@ tests/
 └── run.lua            # scénarios de test
 .luacheckrc            # configuration de luacheck (globaux WoW)
 .env.example           # modèle de configuration locale (WOW_ADDONS_DIR)
+todo.md                # fonctionnalités validées mais reportées
 ProfilBarres/
 ├── ProfilBarres.toc   # métadonnées et ordre de chargement des fichiers
 ├── Core.lua           # bases de données, capture et restauration des profils, commande /profil

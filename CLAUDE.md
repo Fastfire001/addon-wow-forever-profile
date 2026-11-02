@@ -101,6 +101,11 @@ ProfilBarresCharDB = {
   - `C_Spell.PickupSpell(spellID)` d'une monture permet de la poser ;
   - `C_Item.PickupItem` ne prend pas un objet absent des sacs ;
   - `SetBinding(key)` sans commande délie la touche ;
-  - `frame.TitleText` existe sur `BasicFrameTemplateWithInset`, et `check.Text` sur `UICheckButtonTemplate`. Il y a un repli dans les deux cas.
+  - `frame.TitleText` existe sur `BasicFrameTemplateWithInset`, et `check.Text` sur `UICheckButtonTemplate`. Il y a un repli dans les deux cas ;
+  - le champ de saisie d'un `StaticPopup` avec `hasEditBox` est accessible par `popup:GetEditBox()`, `popup.editBox` ou `popup.EditBox` (repli dans `GetPopupEditBox`), et `EditBoxOnEnterPressed` reçoit bien l'EditBox, dont le parent est le popup.
+
+## Suivi
+
+`todo.md` contient les fonctionnalités validées mais reportées, ainsi que celles qui ont été abandonnées. Ne pas les commencer sans feu vert, et mettre le fichier à jour quand une décision change.
 - Test en jeu : `/reload`, BugSack ou `/console scriptErrors 1`, puis vérifier les fichiers `WTF\Account\<COMPTE>\SavedVariables\ProfilBarres.lua` (réglages) et `WTF\Account\<COMPTE>\<royaume>\<perso>\SavedVariables\ProfilBarres.lua` (profils).
 - Toujours tester : enregistrement, chargement, chargement avec un sort non appris, macro supprimée puis recréée, tentative de chargement en combat (doit être refusée).
