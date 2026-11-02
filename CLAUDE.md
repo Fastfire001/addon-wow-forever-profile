@@ -53,7 +53,7 @@ Ce qui suit vient de sources communautaires de la bêta (novembre 2026). En cas 
 - **Raccourcis** : liste de commandes `ACTIONBUTTON1-12`, `MULTIACTIONBAR1..7BUTTON1-12`, `SHAPESHIFTBUTTON1-10`, `BONUSACTIONBUTTON1-10`. Capture avec `GetBindingKey(cmd)` (plusieurs touches possibles). Restauration en trois temps : délier les touches actuelles de ces commandes (`SetBinding(key)`), lier celles du profil (`SetBinding(key, cmd)`), puis `SaveBindings(GetCurrentBindingSet())`.
 - **Correspondance emplacements et barres** (Mainline) : 1-12 barre principale, 13-24 page 2, 25-36 barre droite (MULTIACTIONBAR3), 37-48 barre gauche (MULTIACTIONBAR4), 49-60 barre en bas à droite (MULTIACTIONBAR2), 61-72 barre en bas à gauche (MULTIACTIONBAR1), 73-120 barres de posture et de forme, 121-144 barres spéciales, 145-180 barres 5 à 7 (MULTIACTIONBAR5-7).
 
-## Format des données (prévu)
+## Format des données
 
 Les **profils sont propres à chaque personnage**, ils ne sont jamais partagés. Ils sont stockés dans une variable `SavedVariablesPerCharacter`. Seuls les réglages d'interface sont communs au compte.
 
@@ -85,6 +85,7 @@ ProfilBarresCharDB = {
 - Tout l'outillage fonctionne dans Docker. Si `docker` est indisponible, demander à l'utilisateur de le démarrer.
 - Commandes :
   - `./dev.sh check` : `luac5.1 -p` puis `luacheck`. **À lancer après chaque modification de Lua.**
+  - `./dev.sh test` : tests de la logique contre l'API simulée (`tests/wow_mock.lua`, `tests/run.lua`).
   - `./dev.sh package` : archive zip.
   - `./dev.sh deploy` : copie l'addon vers `WOW_ADDONS_DIR` défini dans `.env`.
   - `./dev.sh shell` : shell dans le conteneur.
@@ -93,6 +94,13 @@ ProfilBarresCharDB = {
 
 ## Vérification
 
-- Les tests automatisés ne sont pas possibles hors du jeu. Avant de rendre la main, `./dev.sh check` doit passer sans erreur ni avertissement.
+- Avant de rendre la main, `./dev.sh check` (zéro avertissement) et `./dev.sh test` (zéro échec) doivent passer.
+- **Tests sur l'API simulée** : `tests/wow_mock.lua` reproduit uniquement ce que l'addon utilise. Toute nouvelle fonction WoW appelée par l'addon doit y être ajoutée, et chaque nouveau comportement doit avoir un scénario dans `tests/run.lua`. La simulation valide la logique, pas l'API réelle : ne jamais présenter un test réussi comme une preuve que cela marche en jeu.
+- Points dont le comportement réel n'est **pas confirmé** et que le mock suppose (à vérifier en jeu, puis corriger le mock si besoin) :
+  - `GetActionText(slot)` renvoie le nom de la macro ;
+  - `C_Spell.PickupSpell(spellID)` d'une monture permet de la poser ;
+  - `C_Item.PickupItem` ne prend pas un objet absent des sacs ;
+  - `SetBinding(key)` sans commande délie la touche ;
+  - `frame.TitleText` existe sur `BasicFrameTemplateWithInset`, et `check.Text` sur `UICheckButtonTemplate`. Il y a un repli dans les deux cas.
 - Test en jeu : `/reload`, BugSack ou `/console scriptErrors 1`, puis vérifier les fichiers `WTF\Account\<COMPTE>\SavedVariables\ProfilBarres.lua` (réglages) et `WTF\Account\<COMPTE>\<royaume>\<perso>\SavedVariables\ProfilBarres.lua` (profils).
 - Toujours tester : enregistrement, chargement, chargement avec un sort non appris, macro supprimée puis recréée, tentative de chargement en combat (doit être refusée).

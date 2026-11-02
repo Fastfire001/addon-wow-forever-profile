@@ -12,6 +12,7 @@ ignore = {
 -- Globaux que l'addon a le droit de définir.
 globals = {
   "ProfilBarresDB",
+  "ProfilBarresCharDB",
   "SLASH_PROFILBARRES1",
   "SLASH_PROFILBARRES2",
   "ProfilBarres_OnAddonCompartmentClick",
@@ -44,6 +45,7 @@ read_globals = {
   -- Macros
   "GetMacroInfo", "GetMacroIndexByName", "CreateMacro", "GetNumMacros",
   "MAX_ACCOUNT_MACROS", "MAX_CHARACTER_MACROS",
+  "PlayerHasToy",
 
   -- Raccourcis
   "GetBindingKey", "SetBinding", "SaveBindings", "GetCurrentBindingSet",
@@ -59,4 +61,5 @@ read_globals = {
   C_ChatInfo = { other_fields = true },
   C_AddOns = { other_fields = true },
   C_Timer = { other_fields = true },
+  C_ToyBox = { other_fields = true },
 }

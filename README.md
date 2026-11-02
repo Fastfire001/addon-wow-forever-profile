@@ -2,9 +2,9 @@
 
 Addon pour **World of Warcraft: Forever** qui permet d'enregistrer plusieurs **profils de barres d'action** et de passer de l'un à l'autre en un clic.
 
-> Statut : **en conception**. Le code n'est pas encore écrit.
+> Statut : **version 0.1.0, pas encore testée en jeu.** La logique est validée par des tests automatisés sur une API WoW simulée (`./dev.sh test`). Le comportement réel dans le client Forever reste à vérifier.
 
-## Fonctionnalités prévues
+## Fonctionnalités
 
 - **Bouton sur la minicarte** « Profil » qui ouvre et ferme la fenêtre de l'addon. Il est déplaçable autour de la minicarte et sa position est mémorisée. L'addon est aussi accessible depuis le menu des addons (Addon Compartment) et par la commande `/profil`.
 - **Fenêtre de gestion des profils** :
@@ -37,7 +37,7 @@ Les clients Classic Era, Cataclysm Classic et TBC Anniversary ne sont **pas** vi
 3. Relancer le jeu ou taper `/reload`.
 4. Si l'addon n'apparaît pas, cocher *Charger les addons périmés* dans la liste des addons.
 
-## Utilisation (prévue)
+## Utilisation
 
 | Action | Comment |
 |---|---|
@@ -50,6 +50,18 @@ Les clients Classic Era, Cataclysm Classic et TBC Anniversary ne sont **pas** vi
 | Masquer ou afficher le bouton | `/profil minimap` |
 
 Deux cases à cocher permettent de choisir ce qui est restauré : **les actions**, **les raccourcis**, ou les deux.
+
+Commandes de chat :
+
+| Commande | Effet |
+|---|---|
+| `/profil` | Ouvre ou ferme la fenêtre |
+| `/profil sauver <nom>` | Enregistre les barres actuelles sous ce nom (écrase s'il existe déjà) |
+| `/profil charger <nom>` | Charge le profil, selon les options cochées |
+| `/profil liste` | Liste les profils du personnage |
+| `/profil minimap` | Affiche ou masque le bouton de la minicarte |
+
+Après un chargement, un résumé s'affiche dans le chat : nombre d'actions posées, retirées et inchangées, raccourcis restaurés, éléments introuvables et macros recréées.
 
 ## Limitations connues
 
@@ -79,6 +91,7 @@ L'image `profilbarres-tools` (Debian, voir `docker/Dockerfile`) contient Lua 5.1
 |---|---|
 | `./dev.sh build` | Construit l'image (à refaire seulement si `docker/Dockerfile` change) |
 | `./dev.sh check` | Vérifie la syntaxe Lua 5.1 (`luac5.1 -p`), puis lance `luacheck` (configuré par `.luacheckrc`) |
+| `./dev.sh test` | Lance les tests automatisés sur l'API WoW simulée (`tests/`) |
 | `./dev.sh package` | Crée `.release/ProfilBarres-<version>.zip`, avec la version lue dans le TOC |
 | `./dev.sh deploy` | Copie `ProfilBarres/` dans le dossier AddOns du jeu |
 | `./dev.sh shell` | Ouvre un shell dans le conteneur |
@@ -97,25 +110,28 @@ WOW_ADDONS_DIR=/mnt/c/Program Files (x86)/World of Warcraft/_forever_/Interface/
 compose.yaml           # services Docker : tools (vérification, packaging) et deploy
 dev.sh                 # point d'entrée des commandes de développement
 docker/Dockerfile      # image des outils
-scripts/               # check.sh, package.sh, deploy.sh (exécutés dans le conteneur)
+scripts/               # check.sh, test.sh, package.sh, deploy.sh (exécutés dans le conteneur)
+tests/
+├── wow_mock.lua       # simulation de l'API WoW utilisée par l'addon
+└── run.lua            # scénarios de test
 .luacheckrc            # configuration de luacheck (globaux WoW)
 .env.example           # modèle de configuration locale (WOW_ADDONS_DIR)
-ProfilBarres/          # l'addon (à venir)
-```
-
-Fichiers prévus pour l'addon :
-
-```
 ProfilBarres/
 ├── ProfilBarres.toc   # métadonnées et ordre de chargement des fichiers
-├── Core.lua           # base de données, capture et restauration des profils, commande /profil
+├── Core.lua           # bases de données, capture et restauration des profils, commande /profil
 ├── UI.lua             # fenêtre de gestion des profils et confirmations
 └── Minimap.lua        # bouton de la minicarte
 ```
 
+### Tests automatisés
+
+`tests/wow_mock.lua` simule la partie de l'API WoW utilisée par l'addon : emplacements d'action, curseur, sorts, objets, jouets, montures, ensembles d'équipement, macros, raccourcis, combat, valeurs secrètes et frames factices. `tests/run.lua` charge l'addon dans l'ordre du TOC, déclenche `ADDON_LOADED` et vérifie les scénarios : capture, restauration, sorts introuvables, macros recréées, refus en combat, options de restauration, commandes, fenêtre et bouton de minicarte.
+
+Ces tests valident **la logique**, pas l'API réelle. Le comportement exact des fonctions du client (par exemple ce que renvoie `GetActionInfo` pour une macro) doit être confirmé en jeu.
+
 ### Tester une modification
 
-1. `./dev.sh check` : il doit se terminer sans erreur ni avertissement.
+1. `./dev.sh check` puis `./dev.sh test` : les deux doivent se terminer sans erreur.
 2. `./dev.sh deploy` : copie l'addon dans le jeu.
 3. En jeu : `/reload`.
 4. Les erreurs apparaissent dans BugSack. `/console scriptErrors 1` les affiche aussi directement.
