@@ -86,7 +86,7 @@ ProfilBarresCharDB = {
 - Commandes :
   - `./dev.sh check` : `luac5.1 -p` puis `luacheck`. **À lancer après chaque modification de Lua.**
   - `./dev.sh test` : tests de la logique contre l'API simulée (`tests/wow_mock.lua`, `tests/run.lua`).
-  - `./dev.sh package` : archive zip.
+  - `./dev.sh package [version]` : archive zip (version par défaut : `dev`).
   - `./dev.sh deploy` : copie l'addon vers `WOW_ADDONS_DIR` défini dans `.env`.
   - `./dev.sh shell` : shell dans le conteneur.
 - Les conteneurs tournent avec l'UID et le GID de l'hôte, pour que les fichiers créés n'appartiennent pas à root.
@@ -103,6 +103,18 @@ ProfilBarresCharDB = {
   - `SetBinding(key)` sans commande délie la touche ;
   - `frame.TitleText` existe sur `BasicFrameTemplateWithInset`, et `check.Text` sur `UICheckButtonTemplate`. Il y a un repli dans les deux cas ;
   - le champ de saisie d'un `StaticPopup` avec `hasEditBox` est accessible par `popup:GetEditBox()`, `popup.editBox` ou `popup.EditBox` (repli dans `GetPopupEditBox`), et `EditBoxOnEnterPressed` reçoit bien l'EditBox, dont le parent est le popup.
+
+## Distribution (GitHub)
+
+- Le dépôt public `Fastfire001/addon-wow-forever-profile` est la source de téléchargement des joueurs, via les **releases GitHub**.
+- **Version** : le TOC du dépôt garde `## Version: @project-version@`. **Ne jamais y écrire de numéro.** `scripts/package.sh` le remplace dans l'archive, puis vérifie le résultat.
+- `ci.yml` lance build, check, test et un empaquetage de contrôle à chaque push et pull request. `release.yml` publie la release quand un tag `vX.Y.Z` est poussé ; un tag avec suffixe `-...` crée une pré-version.
+- Les workflows se vérifient en local avec actionlint, via Docker : `docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -no-color`.
+- Ne jamais créer ni pousser de tag sans demande explicite : cela publie une version auprès des joueurs.
+- **Préserver les données des joueurs** entre les versions :
+  - ne jamais renommer l'addon (dossier, TOC) ni ses variables sauvegardées ;
+  - ne jamais retirer les lignes `SavedVariables` du TOC ;
+  - prévoir une conversion des données à chaque changement de format.
 
 ## Suivi
 

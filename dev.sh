@@ -13,7 +13,7 @@ Usage : ./dev.sh <commande>
   build     Construit l'image Docker des outils
   check     Vérifie la syntaxe Lua 5.1 et lance luacheck
   test      Lance les tests (API WoW simulée)
-  package   Crée l'archive .release/ProfilBarres-<version>.zip
+  package [version]  Crée l'archive .release/ProfilBarres-<version>.zip (défaut : dev)
   deploy    Copie l'addon dans le dossier AddOns du jeu (WOW_ADDONS_DIR dans .env)
   shell     Ouvre un shell dans le conteneur d'outils
 EOF
@@ -23,7 +23,7 @@ case "${1:-}" in
   build)   docker compose build tools ;;
   check)   docker compose run --rm tools sh scripts/check.sh ;;
   test)    docker compose run --rm tools sh scripts/test.sh ;;
-  package) docker compose run --rm tools sh scripts/package.sh ;;
+  package) docker compose run --rm tools sh scripts/package.sh "${2:-dev}" ;;
   deploy)
     if [ ! -f .env ]; then
       echo "Fichier .env absent : copier .env.example en .env et renseigner WOW_ADDONS_DIR." >&2

@@ -30,12 +30,26 @@ Les clients Classic Era, Cataclysm Classic et TBC Anniversary ne sont **pas** vi
 
 ## Installation (joueur)
 
-1. Télécharger ou copier le dossier `ProfilBarres/`.
-2. Le placer dans le dossier des addons **de Forever** (et non dans celui de Retail ou de Classic) :
-   - bêta : `World of Warcraft\_classic_beta_\Interface\AddOns\ProfilBarres\`
-   - lancement : `World of Warcraft\_forever_\Interface\AddOns\ProfilBarres\` (nom du dossier non confirmé ; on le trouve via Battle.net > roue dentée > *Afficher dans l'explorateur*)
+### Téléchargement
+
+👉 **[Télécharger la dernière version](https://github.com/Fastfire001/addon-wow-forever-profile/releases/latest)** : prendre le fichier **`ProfilBarres-x.y.z.zip`** dans la section *Assets*.
+
+> ⚠️ Ne pas utiliser le bouton vert *Code > Download ZIP*, ni les fichiers *Source code* de la release. Ils contiennent tout le projet de développement, et le jeu ne les reconnaîtra pas comme un addon.
+
+### Installation
+
+1. Ouvrir le dossier des addons **de Forever** (et non celui de Retail ou de Classic). On le trouve via Battle.net > roue dentée > *Afficher dans l'explorateur* :
+   - lancement : `World of Warcraft\_forever_\Interface\AddOns\` (nom du dossier non confirmé) ;
+   - bêta : `World of Warcraft\_classic_beta_\Interface\AddOns\`.
+2. Y décompresser le zip. On doit obtenir `...\Interface\AddOns\ProfilBarres\ProfilBarres.toc`, et non `...\AddOns\ProfilBarres\ProfilBarres\...`.
 3. Relancer le jeu ou taper `/reload`.
 4. Si l'addon n'apparaît pas, cocher *Charger les addons périmés* dans la liste des addons.
+
+### Mise à jour
+
+Supprimer l'ancien dossier `ProfilBarres`, puis décompresser la nouvelle version au même endroit. **Les profils ne sont pas perdus** : le jeu les enregistre dans le dossier `WTF`, pas dans celui de l'addon.
+
+Les gestionnaires d'addons qui savent installer depuis GitHub (par exemple WowUp) peuvent aussi suivre les releases du dépôt `Fastfire001/addon-wow-forever-profile`. Leur prise en charge de Forever reste à vérifier.
 
 ## Utilisation
 
@@ -87,15 +101,15 @@ Tous les outils tournent dans **Docker** : rien d'autre n'est à installer sur l
 
 ### Environnement Docker
 
-L'image `profilbarres-tools` (Debian, voir `docker/Dockerfile`) contient Lua 5.1, luacheck, zip et rsync. Toutes les commandes passent par `./dev.sh` :
+L'image `profilbarres-tools` (Debian, voir `docker/Dockerfile`) contient Lua 5.1, luacheck, zip, unzip et rsync. Toutes les commandes passent par `./dev.sh` :
 
 | Commande | Effet |
 |---|---|
 | `./dev.sh build` | Construit l'image (à refaire seulement si `docker/Dockerfile` change) |
 | `./dev.sh check` | Vérifie la syntaxe Lua 5.1 (`luac5.1 -p`), puis lance `luacheck` (configuré par `.luacheckrc`) |
 | `./dev.sh test` | Lance les tests automatisés sur l'API WoW simulée (`tests/`) |
-| `./dev.sh package` | Crée `.release/ProfilBarres-<version>.zip`, avec la version lue dans le TOC |
-| `./dev.sh deploy` | Copie `ProfilBarres/` dans le dossier AddOns du jeu |
+| `./dev.sh package [version]` | Crée `.release/ProfilBarres-<version>.zip` (par défaut `dev`), avec la version inscrite dans le TOC de l'archive |
+| `./dev.sh deploy` | Copie `ProfilBarres/` dans le dossier AddOns du jeu (version affichée : `dev`) |
 | `./dev.sh shell` | Ouvre un shell dans le conteneur |
 
 Configuration du déploiement : copier `.env.example` en `.env` (fichier ignoré par git), puis renseigner `WOW_ADDONS_DIR` avec le chemin du dossier AddOns vu depuis WSL, par exemple :
@@ -109,6 +123,9 @@ WOW_ADDONS_DIR=/mnt/c/Program Files (x86)/World of Warcraft/_forever_/Interface/
 ### Structure
 
 ```
+.github/workflows/
+├── ci.yml             # vérification à chaque push / pull request
+└── release.yml        # publication d'une release quand un tag vX.Y.Z est poussé
 compose.yaml           # services Docker : tools (vérification, packaging) et deploy
 dev.sh                 # point d'entrée des commandes de développement
 docker/Dockerfile      # image des outils
@@ -140,10 +157,28 @@ Ces tests valident **la logique**, pas l'API réelle. Le comportement exact des 
 4. Les erreurs apparaissent dans BugSack. `/console scriptErrors 1` les affiche aussi directement.
 5. Les données sauvegardées se trouvent dans `WTF\Account\<COMPTE>\SavedVariables\ProfilBarres.lua` (réglages communs) et `WTF\Account\<COMPTE>\<royaume>\<perso>\SavedVariables\ProfilBarres.lua` (profils du personnage).
 
-### Publication
+### Intégration continue
 
-- `./dev.sh package` produit l'archive zip, avec le dossier `ProfilBarres/` à sa racine.
-- CurseForge propose une catégorie WoW Forever. Le packager BigWigs (v2.6.0 et plus) détecte automatiquement les interfaces `16xxx`.
+À chaque push et à chaque pull request, GitHub Actions (`ci.yml`) construit l'image Docker puis lance `check`, `test` et un empaquetage de contrôle. Ce sont les mêmes commandes qu'en local.
+
+### Publier une version
+
+La version n'est **jamais écrite à la main** : le TOC du dépôt contient `## Version: @project-version@`, que l'empaquetage remplace par la version du tag.
+
+1. Vérifier que `main` est prêt : la CI est verte, et le README et `todo.md` sont à jour.
+2. Créer et pousser le tag :
+   ```sh
+   git tag v0.2.0
+   git push origin v0.2.0
+   ```
+3. Le workflow `release.yml` relance `check` et `test`, construit `ProfilBarres-0.2.0.zip` et crée la release GitHub avec ce zip et des notes de version générées automatiquement à partir des commits.
+4. Un tag avec suffixe (`v0.2.0-beta.1`) crée une **pré-version**. Elle n'apparaît pas comme « dernière version » sur le lien de téléchargement.
+
+En cas d'échec, corriger, supprimer le tag (`git tag -d v0.2.0 && git push origin :refs/tags/v0.2.0`) puis recommencer.
+
+Pour essayer un zip en local : `./dev.sh package v0.2.0`.
+
+Plus tard, si l'addon doit aussi être publié sur CurseForge ou Wago, on pourra passer au packager BigWigs (v2.6.0 et plus), qui gère Forever et comprend déjà `@project-version@`.
 
 ## Ressources
 

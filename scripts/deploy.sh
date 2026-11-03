@@ -16,4 +16,6 @@ if [ ! -d "$TARGET" ] || [ ! -w "$TARGET" ]; then
 fi
 
 rsync -rt --delete "$ADDON_DIR/" "$TARGET/$ADDON_DIR/"
+# version affichée en jeu pour une copie de développement
+sed -i "s/@project-version@/dev/g" "$TARGET/$ADDON_DIR/$ADDON_DIR.toc"
 echo "Déployé dans WOW_ADDONS_DIR/$ADDON_DIR. Faire /reload en jeu."

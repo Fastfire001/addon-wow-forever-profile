@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: Profil |cff33ff99Barres|r
 ## Notes: Enregistre et restaure plusieurs profils de barres d'action (sorts, macros, objets) et leurs raccourcis.
-## Version: 0.1.0
+## Version: @project-version@
 ## SavedVariables: ProfilBarresDB
 ## SavedVariablesPerCharacter: ProfilBarresCharDB
 ## IconTexture: Interface\Icons\INV_Misc_Book_09

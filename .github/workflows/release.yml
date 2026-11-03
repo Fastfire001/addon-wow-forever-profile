@@ -1,0 +1,43 @@
+# Publie une release GitHub avec le zip de l'addon quand un tag vX.Y.Z est poussé.
+#   git tag v0.2.0 && git push origin v0.2.0
+# Un tag avec suffixe (v0.2.0-beta.1) crée une pré-version.
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construire l'image des outils
+        run: ./dev.sh build
+
+      - name: Syntaxe et luacheck
+        run: ./dev.sh check
+
+      - name: Tests
+        run: ./dev.sh test
+
+      - name: Empaquetage
+        run: ./dev.sh package "$GITHUB_REF_NAME"
+
+      - name: Créer la release GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          ZIP=".release/ProfilBarres-${VERSION}.zip"
+          test -f "$ZIP"
+          PRERELEASE=""
+          case "$VERSION" in *-*) PRERELEASE="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" "$ZIP" \
+            --title "ProfilBarres ${VERSION}" \
+            --generate-notes \
+            $PRERELEASE

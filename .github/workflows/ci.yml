@@ -1,0 +1,28 @@
+# Vérifie l'addon (syntaxe, luacheck, tests sur l'API simulée) à chaque push et pull request.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construire l'image des outils
+        run: ./dev.sh build
+
+      - name: Syntaxe et luacheck
+        run: ./dev.sh check
+
+      - name: Tests
+        run: ./dev.sh test
+
+      - name: Empaquetage (vérification)
+        run: ./dev.sh package "ci-${GITHUB_SHA::7}"
