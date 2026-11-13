@@ -18,6 +18,7 @@ function M.reset()
   M.equipmentSets = {}    -- [nom] = setID
   M.accountMacros = {}    -- liste de { name, icon, body }
   M.characterMacros = {}
+  M.macroActionIdIsIndex = false
   M.bindings = {}         -- [touche] = commande
   M.savedBindingSet = nil
   M.inCombat = false
@@ -159,7 +160,9 @@ function M.install()
     local a = M.slots[slot]
     if not a then return nil end
     if a.type == "macro" then
-      -- comme le client récent : l'id renvoyé n'est pas l'index de la macro
+      -- Par défaut, comme le client récent : l'id renvoyé n'est pas l'index de
+      -- la macro. M.macroActionIdIsIndex simule les versions où il l'est.
+      if M.macroActionIdIsIndex then return "macro", a.index, "" end
       return "macro", 999999, ""
     elseif a.type == "equipmentset" then
       return "equipmentset", a.name
@@ -168,7 +171,21 @@ function M.install()
   end
   G.GetActionText = function(slot)
     local a = M.slots[slot]
-    if a and a.type == "macro" then return a.name end
+    if a and a.type == "macro" then
+      local m = M.macroByIndex(a.index)
+      return m and m.name or a.name
+    end
+  end
+  -- Icône affichée : celle de la macro (le vrai client peut afficher celle du
+  -- sort d'une macro #showtooltip, non simulé ici).
+  G.GetActionTexture = function(slot)
+    local a = M.slots[slot]
+    if not a then return nil end
+    if a.type == "macro" then
+      local m = M.macroByIndex(a.index)
+      return m and m.icon
+    end
+    return a.icon
   end
   G.ClearCursor = function() M.cursor = nil end
   G.GetCursorInfo = function() return M.cursor and M.cursor.type or nil end
@@ -230,8 +247,14 @@ function M.install()
   G.MAX_ACCOUNT_MACROS = 120
   G.MAX_CHARACTER_MACROS = 30
   local function macroByIndex(index)
+    if not index then return nil end
     if index <= 120 then return M.accountMacros[index] end
     return M.characterMacros[index - 120]
+  end
+  M.macroByIndex = macroByIndex
+  -- Pose sur `slot` la macro d'index `index`, comme le ferait le joueur.
+  M.placeMacro = function(slot, index)
+    M.slots[slot] = { type = "macro", name = macroByIndex(index).name, index = index }
   end
   G.GetMacroIndexByName = function(name)
     for i, m in ipairs(M.accountMacros) do if m.name == name then return i end end
@@ -248,11 +271,11 @@ function M.install()
     count("CreateMacro")
     local list = perCharacter and M.characterMacros or M.accountMacros
     list[#list + 1] = { name = name, icon = icon, body = body }
-    return G.GetMacroIndexByName(name)
+    return (perCharacter and 120 or 0) + #list
   end
   G.PickupMacro = function(index)
     local m = macroByIndex(index)
-    if m then M.cursor = { type = "macro", name = m.name } end
+    if m then M.cursor = { type = "macro", name = m.name, index = index } end
   end
 
   -- Raccourcis

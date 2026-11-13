@@ -63,8 +63,8 @@ end
 local function placeDefaultBars()
   mock.slots[1] = { type = "spell", id = 116, subType = "spell" }
   mock.slots[2] = { type = "spell", id = 133, subType = "spell" }
-  mock.slots[3] = { type = "macro", name = "Focus" }
-  mock.slots[4] = { type = "macro", name = "Burst" }
+  mock.slots[3] = { type = "macro", name = "Focus", index = 1 }
+  mock.slots[4] = { type = "macro", name = "Burst", index = 121 }
   mock.slots[5] = { type = "item", id = 5512 }
   mock.slots[6] = { type = "summonmount", id = 460 }
   mock.slots[7] = { type = "equipmentset", name = "PvP" }
@@ -231,6 +231,97 @@ test("chargement : macro supprimée recréée (compte et personnage)", function(
   eq(mock.accountMacros[1].name, "Focus"); eq(mock.accountMacros[1].body, "/focus")
   eq(mock.characterMacros[1].name, "Burst")
   eq(mock.slots[3].name, "Focus"); eq(mock.slots[4].name, "Burst")
+end)
+
+-- Trois macros nommées " " (texte masqué sur la barre), comme le rapport de bug.
+local function placeHomonymMacros()
+  mock.accountMacros[2] = { name = " ", icon = 1001, body = "/cast Éclair de givre" }
+  mock.accountMacros[3] = { name = " ", icon = 1002, body = "/cast Boule de feu" }
+  mock.characterMacros[2] = { name = " ", icon = 1003, body = "/cast Transfert" }
+  mock.placeMacro(20, 2)
+  mock.placeMacro(21, 3)
+  mock.placeMacro(22, 122)
+end
+
+local function checkHomonymProfile(p)
+  eq(p.actions[20].body, "/cast Éclair de givre", "macro 20")
+  eq(p.actions[21].body, "/cast Boule de feu", "macro 21")
+  eq(p.actions[22].body, "/cast Transfert", "macro 22")
+  eq(p.actions[22].perCharacter, true, "macro 22 de personnage")
+end
+
+local function checkHomonymSlots()
+  eq(mock.slots[20].index, 2, "emplacement 20")
+  eq(mock.slots[21].index, 3, "emplacement 21")
+  eq(mock.slots[22].index, 122, "emplacement 22")
+end
+
+test("macros homonymes : distinguées par l'id de GetActionInfo", function()
+  local PB = setup()
+  givePlayerStuff(); placeDefaultBars(); placeHomonymMacros()
+  mock.macroActionIdIsIndex = true
+  -- même icône partout : seul l'id permet de les distinguer à la capture
+  mock.accountMacros[2].icon, mock.accountMacros[3].icon, mock.characterMacros[2].icon = 1, 1, 1
+  PB:SaveProfile("Raid")
+  checkHomonymProfile(PB:GetProfile("Raid"))
+end)
+
+test("macros homonymes : distinguées par l'icône si l'id n'est pas fiable", function()
+  local PB = setup()
+  givePlayerStuff(); placeDefaultBars(); placeHomonymMacros()
+  PB:SaveProfile("Raid")
+  checkHomonymProfile(PB:GetProfile("Raid"))
+end)
+
+test("macros homonymes : chacune revient à sa place au chargement", function()
+  local PB = setup()
+  givePlayerStuff(); placeDefaultBars(); placeHomonymMacros()
+  PB:SaveProfile("Raid")
+  -- le joueur mélange ses barres, dont des emplacements avec une autre macro " "
+  mock.placeMacro(20, 3)
+  mock.placeMacro(21, 3)
+  mock.slots[22] = nil
+  local _, report = PB:LoadProfile("Raid")
+  checkHomonymSlots()
+  eq(#report.createdMacros, 0, "aucune macro recréée")
+  -- second chargement : tout est déjà en place
+  mock.calls = {}
+  PB:LoadProfile("Raid")
+  eq(mock.calls.PlaceAction, nil, "aucun PlaceAction")
+end)
+
+test("macros homonymes : ancien profil sans texte, première macro du nom", function()
+  local PB = setup()
+  givePlayerStuff(); placeDefaultBars(); placeHomonymMacros()
+  PB:SaveProfile("Raid")
+  local p = PB:GetProfile("Raid")
+  p.actions[21].body, p.actions[21].icon = nil, nil
+  mock.slots[21] = nil
+  PB:LoadProfile("Raid")
+  eq(mock.slots[21].index, 2, "repli sur la première macro du nom")
+end)
+
+test("macros homonymes : macro supprimée recréée avec son texte", function()
+  local PB = setup()
+  givePlayerStuff(); placeDefaultBars(); placeHomonymMacros()
+  PB:SaveProfile("Raid")
+  mock.characterMacros[2] = nil
+  mock.slots[22] = nil
+  local _, report = PB:LoadProfile("Raid")
+  eq(#report.createdMacros, 1, "1 macro recréée")
+  eq(mock.characterMacros[2].body, "/cast Transfert", "texte recréé")
+  eq(mock.slots[22].index, 122, "posée")
+end)
+
+test("macros homonymes : macro modifiée retrouvée par son icône, pas dupliquée", function()
+  local PB = setup()
+  givePlayerStuff(); placeDefaultBars(); placeHomonymMacros()
+  PB:SaveProfile("Raid")
+  mock.accountMacros[3].body = "/cast [@focus] Boule de feu" -- texte modifié
+  mock.slots[21] = nil
+  local _, report = PB:LoadProfile("Raid")
+  eq(#report.createdMacros, 0, "aucune macro recréée")
+  eq(mock.slots[21].index, 3, "même icône : même macro")
 end)
 
 test("chargement : macro non recréée si plus de place", function()

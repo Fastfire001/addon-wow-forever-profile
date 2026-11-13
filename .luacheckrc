@@ -37,7 +37,7 @@ read_globals = {
   "GetSpecialization", "GetSpecializationInfo",
 
   -- Barres d'action et curseur
-  "HasAction", "GetActionInfo", "GetActionText", "PickupAction", "PlaceAction",
+  "HasAction", "GetActionInfo", "GetActionText", "GetActionTexture", "PickupAction", "PlaceAction",
   "ClearCursor", "GetCursorInfo",
   "PickupSpell", "PickupItem", "PickupMacro",
   "GetSpellInfo", "GetItemInfo",

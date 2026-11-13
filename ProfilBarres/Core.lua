@@ -109,6 +109,76 @@ local function GetCurrentSpecName()
 end
 
 ---------------------------------------------------------------------------
+-- Macros : plusieurs macros peuvent porter le même nom (souvent " " pour
+-- masquer le texte sur la barre). GetMacroIndexByName ne renvoie que la
+-- première : on parcourt donc toutes les macros pour trouver la bonne.
+---------------------------------------------------------------------------
+
+-- Liste des index de macros (compte puis personnage) portant ce nom.
+local function FindMacrosByName(name)
+  local found = {}
+  local numAccount, numCharacter = GetNumMacros()
+  local function scan(first, n)
+    for index = first, first + (n or 0) - 1 do
+      local macroName = GetMacroInfo(index)
+      if macroName == name then found[#found + 1] = index end
+    end
+  end
+  scan(1, numAccount)
+  scan(MaxAccountMacros() + 1, numCharacter)
+  return found
+end
+
+-- Renvoie l'unique macro de `candidates` dont le champ `field` de
+-- GetMacroInfo (2 = icône) vaut `value`, ou nil s'il y en a zéro ou plusieurs.
+local function PickUnique(candidates, field, value)
+  if value == nil or IsSecret(value) then return nil end
+  local match
+  for _, index in ipairs(candidates) do
+    local info = { GetMacroInfo(index) }
+    if info[field] == value then
+      if match then return nil end
+      match = index
+    end
+  end
+  return match
+end
+
+-- Index de la macro posée sur `slot`, dont le nom affiché est `name`.
+local function ResolveSlotMacro(slot, actionID, name)
+  -- Sur certaines versions, l'id renvoyé par GetActionInfo est l'index de la
+  -- macro : on l'utilise s'il désigne bien une macro de ce nom.
+  if type(actionID) == "number" and actionID > 0
+      and actionID <= MaxAccountMacros() + MaxCharacterMacros()
+      and GetMacroInfo(actionID) == name then
+    return actionID
+  end
+  local candidates = FindMacrosByName(name)
+  if #candidates <= 1 then return candidates[1] end
+  -- Plusieurs macros du même nom : on départage par l'icône affichée.
+  local texture = GetActionTexture and GetActionTexture(slot)
+  return PickUnique(candidates, 2, texture) or candidates[1]
+end
+
+-- Index de la macro correspondant à une entrée de profil : même nom et même
+-- texte, sinon même nom et même icône (macro modifiée depuis). Une macro qui
+-- n'a que le nom en commun n'est pas réutilisée : nil, pour qu'elle soit
+-- recréée. Les anciens profils sans texte se rabattent sur la première du nom.
+local function FindProfileMacro(entry)
+  local candidates = FindMacrosByName(entry.name)
+  if #candidates == 0 then return nil end
+  if entry.body ~= nil then
+    for _, index in ipairs(candidates) do
+      local _, _, body = GetMacroInfo(index)
+      if body == entry.body then return index end
+    end
+  end
+  local byIcon = PickUnique(candidates, 2, entry.icon)
+  if byIcon or entry.body ~= nil then return byIcon end
+  return candidates[1]
+end
+
+---------------------------------------------------------------------------
 -- Lecture d'un emplacement
 ---------------------------------------------------------------------------
 
@@ -125,13 +195,11 @@ local function ReadSlot(slot)
     return { type = "item", id = id, name = GetItemNameByID(id) }
 
   elseif actionType == "macro" then
-    -- L'id renvoyé pour une macro n'est pas fiable (index ou spellID selon la
-    -- version) : on identifie la macro par son nom.
     local name = GetActionText(slot)
     if name == nil or IsSecret(name) or name == "" then return nil end
     local entry = { type = "macro", name = name }
-    local index = GetMacroIndexByName(name)
-    if index and index > 0 then
+    local index = ResolveSlotMacro(slot, id, name)
+    if index then
       local _, icon, body = GetMacroInfo(index)
       entry.icon = icon
       entry.body = body
@@ -157,7 +225,12 @@ PB.ReadSlot = ReadSlot
 
 local function IsSameAction(current, entry)
   if not current or current.type ~= entry.type then return false end
-  if entry.type == "macro" or entry.type == "equipmentset" then
+  if entry.type == "macro" then
+    -- Même nom ne suffit pas : deux macros homonymes peuvent différer.
+    return current.name == entry.name
+      and (entry.body == nil or current.body == entry.body)
+  end
+  if entry.type == "equipmentset" then
     return current.name == entry.name
   end
   return current.id == entry.id
@@ -172,10 +245,10 @@ end
 -- Pose d'une action
 ---------------------------------------------------------------------------
 
--- Retrouve la macro par son nom, ou la recrée à partir du texte sauvegardé.
+-- Retrouve la macro du profil, ou la recrée à partir du texte sauvegardé.
 local function FindOrCreateMacro(entry, report)
-  local index = GetMacroIndexByName(entry.name)
-  if index and index > 0 then return index end
+  local index = FindProfileMacro(entry)
+  if index then return index end
   if not entry.body then return nil end
 
   local numAccount, numCharacter = GetNumMacros()

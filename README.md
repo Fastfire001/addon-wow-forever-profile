@@ -84,7 +84,8 @@ Après un chargement, un résumé s'affiche dans le chat : nombre d'actions pos�
 - **Pas de chargement en combat** : poser des actions, créer des macros et modifier des raccourcis sont des opérations protégées par le jeu.
 - **Les barres dépendent de la spécialisation** : un profil capture les barres de la spécialisation active au moment de l'enregistrement.
 - **Profils propres à chaque personnage** : chaque personnage a sa propre liste de profils. Seuls les réglages (position du bouton de minicarte, options de restauration) sont communs au compte.
-- **Macros** : elles sont retrouvées par leur nom. Si une macro n'existe plus, l'addon tente de la recréer à partir du texte sauvegardé, à condition qu'il reste de la place.
+- **Macros** : elles sont retrouvées par leur nom et leur texte, ce qui permet d'avoir plusieurs macros du même nom (par exemple `" "` pour masquer le texte sur la barre). Une macro modifiée depuis l'enregistrement est retrouvée par son icône. Si une macro n'existe plus (ni même texte ni même icône), l'addon tente de la recréer à partir du texte sauvegardé, à condition qu'il reste de la place. Les profils enregistrés avec une version antérieure à cette correction peuvent contenir le mauvais texte pour des macros homonymes : il faut les réenregistrer.
+- **Macros homonymes avec la même icône** : à l'enregistrement, si le jeu n'indique pas quelle macro est posée, l'addon les départage par l'icône affichée. Deux macros de même nom et de même icône (ou dont l'icône suit le sort, avec `#showtooltip`) peuvent alors être confondues : donne-leur des noms ou des icônes différents.
 - **Non pris en charge** : les menus déroulants de sorts (flyouts, comme les portails du mage) et les actions de familier ne sont pas restaurés.
 - Les profils sont écrits sur le disque par le jeu à la **déconnexion** ou au `/reload`. En cas de crash du client, les modifications de la session sont perdues.
 
